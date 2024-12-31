@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 public class PlayerMoveState : PlayerBaseState
@@ -13,7 +14,16 @@ public class PlayerMoveState : PlayerBaseState
     {
         Debug.Log("Enter Move State");
         stateMechine.onRunningStateChange += HandleRunningStateChange;
+        stateMechine.onCrouchStateChange += HandleCrouchStateChange;
         stateMechine.animator.SetBool("isRunning", stateMechine.isRunning);
+    }
+
+    private void HandleCrouchStateChange(bool crouching)
+    {
+        if(crouching)
+        {
+            stateMechine.SwitchState(PlayerState.Crouch);
+        }
     }
 
     private void HandleRunningStateChange(bool running)
@@ -28,6 +38,7 @@ public class PlayerMoveState : PlayerBaseState
     {
         Debug.Log("Exiting Move State");
         stateMechine.onRunningStateChange -= HandleRunningStateChange;
+        stateMechine.onCrouchStateChange -= HandleCrouchStateChange;
     }
 
 
@@ -40,7 +51,7 @@ public class PlayerMoveState : PlayerBaseState
     {
         float speed = stateMechine.GetMoveInput().magnitude;
         stateMechine.animator.SetFloat("Speed", speed);
-
+        stateMechine.BoxColliderChange();
         if (speed == 0)
         {
             stateMechine.animator.SetFloat("Speed", 0);

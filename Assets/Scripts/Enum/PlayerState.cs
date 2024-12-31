@@ -1,5 +1,6 @@
 public enum PlayerState
 {
     Moveing,
-    Running
+    Running,
+    Crouch
 }
