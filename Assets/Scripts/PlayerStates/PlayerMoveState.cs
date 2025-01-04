@@ -44,7 +44,7 @@ public class PlayerMoveState : PlayerBaseState
 
     public override void FixedUpdateState()
     {
-        stateMechine.Move(stateMechine.walkSpeed);
+        stateMechine.MovePlayer(stateMechine.walkSpeed);
     }
 
     public override void UpdateState()
@@ -52,9 +52,11 @@ public class PlayerMoveState : PlayerBaseState
         float speed = stateMechine.GetMoveInput().magnitude;
         stateMechine.animator.SetFloat("Speed", speed);
         stateMechine.BoxColliderChange();
+
+        // If no movement input, stop animation speed
         if (speed == 0)
         {
-            stateMechine.animator.SetFloat("Speed", 0);
+            stateMechine.animator.SetFloat("Speed", 0f);
         }
     }
 }

@@ -33,7 +33,7 @@ public class PlayerRunningState : PlayerBaseState
 
     public override void FixedUpdateState()
     {
-        stateMechine.Move(stateMechine.runSpeed);
+        stateMechine.MovePlayer(stateMechine.runSpeed);
     }
 
     public override void UpdateState()

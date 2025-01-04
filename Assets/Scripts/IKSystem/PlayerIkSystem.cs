@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerIkSystem : MonoBehaviour
@@ -8,9 +7,16 @@ public class PlayerIkSystem : MonoBehaviour
     public Transform lookTarget;
     [Range(0f, 1f)] public float lookWeight = 1f;
 
+    private Vector3 originalLookTargetPosition;  // Store original position
+    public float crouchOffsetY = -0.5f;  // Offset for look target when crouching (adjust as needed)
+
     private void Start()
     {
         animator = GetComponent<Animator>();
+        if (lookTarget != null)
+        {
+            originalLookTargetPosition = lookTarget.localPosition;  // Use local position for relative adjustment
+        }
     }
 
     private void OnAnimatorIK(int layerIndex)
@@ -36,13 +42,13 @@ public class PlayerIkSystem : MonoBehaviour
         animator.SetLookAtWeight(0f);
     }
 
-    public void SetLookTarget(Transform target)
+    public void AdjustLookTargetForCrouch(bool isCrouching)
     {
-        lookTarget = target;
-    }
-
-    public void ClearLookTarget()
-    {
-        lookTarget = null;
+        if (lookTarget != null)
+        {
+            Vector3 adjustedPosition = originalLookTargetPosition;
+            adjustedPosition.y += isCrouching ? crouchOffsetY : 0f;  // Apply vertical offset for crouching
+            lookTarget.localPosition = adjustedPosition;
+        }
     }
 }

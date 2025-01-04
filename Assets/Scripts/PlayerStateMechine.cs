@@ -22,27 +22,26 @@ public class PlayerStateMechine : MonoBehaviour
     public float jumpForce;
 
     private Vector3 moveInput;
-    
-    public bool isShiftPressed;
-    public bool isRunning = false;
 
-    public bool isCKeyPressed;
+    public bool isRunning = false;
     public bool isCrouching = false;
 
     public event Action<bool> onRunningStateChange;
     public event Action<bool> onCrouchStateChange;
 
 
-    public float crouchHeight = 0.5f;  // Height of the collider when crouched
-    public float standHeight = 2.0f;   // Height of the collider when standing
-    public float crouchSpeed = 3f;     // Speed of crouch transition
-    public float standingSpeed = 4f;   // Speed of standing transition
+    bool isCKeyPressed;
+    public float crouchHeight = 0.5f;  
+    public float standHeight = 2.0f;   
+    public float crouchSpeed = 3f;     
+    public float standingSpeed = 4f;   
 
     public Vector3 originalCenter;
     public Vector3 crouchCenter;
 
     private PlayerIkSystem playerIKSystem;
 
+    public float rotationSpeed = 10f;
 
     private void Start()
     {
@@ -53,11 +52,10 @@ public class PlayerStateMechine : MonoBehaviour
 
         if (rb == null || animator == null || boxCollider == null || playerIKSystem == null)
         {
-            Debug.LogError("Rigidbody or Animator or BoxCollider or PlayerIkSystem is missing!");
+            Debug.LogError("Rigidbody, Animator, BoxCollider, or PlayerIkSystem is missing!");
             enabled = false;
             return;
         }
-
 
         // Store the original center of the collider
         originalCenter = boxCollider.center;
@@ -78,30 +76,14 @@ public class PlayerStateMechine : MonoBehaviour
         HandlePlayerInput();
     }
 
-    public void BoxColliderChange()
-    {
-        // Smoothly adjust the collider's size and center during crouch and stand
-        if (isCrouching)
-        {
-            boxCollider.size = Vector3.Lerp(boxCollider.size, new Vector3(boxCollider.size.x, crouchHeight, boxCollider.size.z), Time.deltaTime * crouchSpeed);
-            boxCollider.center = Vector3.Lerp(boxCollider.center, crouchCenter, Time.deltaTime * crouchSpeed);
-        }
-        else
-        {
-            boxCollider.size = Vector3.Lerp(boxCollider.size, new Vector3(boxCollider.size.x, standHeight, boxCollider.size.z), Time.deltaTime * standingSpeed);
-            boxCollider.center = Vector3.Lerp(boxCollider.center, originalCenter, Time.deltaTime * standingSpeed);
-        }
-    }
-
     private void FixedUpdate()
     {
         currentState?.FixedUpdateState();
     }
 
+    // Switch between states
     public void SwitchState(PlayerState newState)
     {
-        if (currentPlayerState == newState) return;
-
         currentState?.ExitState();
         currentPlayerState = newState;
 
@@ -116,48 +98,99 @@ public class PlayerStateMechine : MonoBehaviour
         currentState?.EnterState();
     }
 
+    // Handle player input for movement and state transitions
     private void HandlePlayerInput()
     {
         moveX = Input.GetAxisRaw("Horizontal");
         moveY = Input.GetAxisRaw("Vertical");
 
-        moveInput = new Vector3(moveX, rb.velocity.y, moveY).normalized;
+        moveInput = new Vector3(moveX, 0, moveY).normalized;
 
-
+        // Jump logic
         if (Input.GetKeyDown(KeyCode.Space) && IsGrounded())
         {
             rb.velocity = new Vector3(rb.velocity.x, jumpForce, rb.velocity.z);
         }
 
+        // Apply crouch and running logic
         ApplyRunning();
         ApplyCrouching();
 
         // Set the look target dynamically
         if (playerIKSystem.lookTarget != null)
         {
-            playerIKSystem.SetLookTarget(playerIKSystem.lookTarget);
+            playerIKSystem.AdjustLookTargetForCrouch(isCrouching);
+        }
+
+        // Camera-relative movement and rotation
+        if (moveInput.magnitude >= 0.1f)
+        {
+            float speed = isRunning ? runSpeed : walkSpeed;
+            // Pass the correct speed to MovePlayer
+            MovePlayer(speed);
+        }
+        else
+        {
+            // No input, stop movement
+            rb.MovePosition(new Vector3(rb.position.x, rb.position.y, rb.position.z));
         }
     }
 
+    // Get movement input as a Vector3
+    public Vector3 GetMoveInput() => moveInput;
+    
+
+    public void MovePlayer(float speed)
+    {
+        // Get the camera's forward and right vectors
+        Vector3 cameraForward = Camera.main.transform.forward;
+        Vector3 cameraRight = Camera.main.transform.right;
+
+        // Flatten the vectors to the horizontal plane
+        cameraForward.y = 0;
+        cameraRight.y = 0;
+
+        cameraForward.Normalize();
+        cameraRight.Normalize();
+
+        // Calculate the movement direction relative to the camera
+        Vector3 moveDirection = cameraForward * moveInput.z + cameraRight * moveInput.x;
+
+        // Calculate the target rotation and apply it to the Rigidbody
+        Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
+        rb.rotation = Quaternion.Slerp(rb.rotation, targetRotation, rotationSpeed * Time.fixedDeltaTime);
+
+        // Apply movement using MovePosition
+        Vector3 targetPosition = rb.position + moveDirection * speed * Time.fixedDeltaTime;
+        rb.MovePosition(targetPosition);
+    }
+
+    // Handle crouching logic
     private void ApplyCrouching()
     {
-        isCKeyPressed = Input.GetKey(KeyCode.C);
+         isCKeyPressed = Input.GetKey(KeyCode.C);
         if (isCKeyPressed && !isCrouching)
         {
             isCrouching = true;
             onCrouchStateChange?.Invoke(isCrouching);
+            playerIKSystem.AdjustLookTargetForCrouch(isCrouching);
         }
         else if (!isCKeyPressed && isCrouching)
         {
             isCrouching = false;
             onCrouchStateChange?.Invoke(isCrouching);
+            playerIKSystem.AdjustLookTargetForCrouch(isCrouching);
         }
+
+        // Smoothly change the collider size and center based on crouch state
+        BoxColliderChange();
     }
 
+    // Handle running logic
     private void ApplyRunning()
     {
-        isShiftPressed = Input.GetKey(KeyCode.LeftShift);
-        // Handle running logic based on shift key and movement
+        bool isShiftPressed = Input.GetKey(KeyCode.LeftShift);
+
         if (isShiftPressed && moveInput.magnitude > 0 && !isRunning)
         {
             isRunning = true;
@@ -170,21 +203,24 @@ public class PlayerStateMechine : MonoBehaviour
         }
     }
 
+    // Check if the player is grounded
     private bool IsGrounded()
     {
-        // Simple check to see if the player is on the ground
         return Physics.Raycast(transform.position, Vector3.down, 0.5f);
     }
-    public Vector3 GetMoveInput() => moveInput;
 
-    public void Move(float speed)
+    // Smoothly change the collider's size and center during crouch and stand
+    public void BoxColliderChange()
     {
-        Vector3 velocity = moveInput * speed * Time.fixedDeltaTime;
-        rb.MovePosition(rb.position + velocity);
-    }
-    // In case you want to remove the look target
-    private void RemoveLookTarget()
-    {
-        playerIKSystem.ClearLookTarget();
+        if (isCrouching)
+        {
+            boxCollider.size = Vector3.Lerp(boxCollider.size, new Vector3(boxCollider.size.x, crouchHeight, boxCollider.size.z), Time.deltaTime * crouchSpeed);
+            boxCollider.center = Vector3.Lerp(boxCollider.center, crouchCenter, Time.deltaTime * crouchSpeed);
+        }
+        else
+        {
+            boxCollider.size = Vector3.Lerp(boxCollider.size, new Vector3(boxCollider.size.x, standHeight, boxCollider.size.z), Time.deltaTime * standingSpeed);
+            boxCollider.center = Vector3.Lerp(boxCollider.center, originalCenter, Time.deltaTime * standingSpeed);
+        }
     }
 }
