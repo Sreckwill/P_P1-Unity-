@@ -14,6 +14,8 @@ public class PlayerRunningState : PlayerBaseState
         Debug.Log("Enter Running State");
         stateMechine.onRunningStateChange += HandleRunningStateChange;
         stateMechine.animator.SetBool("isRunning", stateMechine.isRunning);
+        stateMechine.animator.SetBool("Crouch",stateMechine.isCrouching);
+        stateMechine.animator.CrossFadeInFixedTime("isRunning", 0.1f);
     }
 
     private void HandleRunningStateChange(bool running)

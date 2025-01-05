@@ -28,8 +28,7 @@ public class PlayerStateMechine : MonoBehaviour
 
     public event Action<bool> onRunningStateChange;
     public event Action<bool> onCrouchStateChange;
-
-
+   
     bool isCKeyPressed;
     public float crouchHeight = 0.5f;  
     public float standHeight = 2.0f;   
@@ -43,6 +42,7 @@ public class PlayerStateMechine : MonoBehaviour
 
     public float rotationSpeed = 10f;
 
+    
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
@@ -123,7 +123,7 @@ public class PlayerStateMechine : MonoBehaviour
         }
 
         // Camera-relative movement and rotation
-        if (moveInput.magnitude >= 0.1f)
+        if (!isCrouching &&moveInput.magnitude >= 0.1f)
         {
             float speed = isRunning ? runSpeed : walkSpeed;
             // Pass the correct speed to MovePlayer
@@ -168,18 +168,16 @@ public class PlayerStateMechine : MonoBehaviour
     // Handle crouching logic
     private void ApplyCrouching()
     {
-         isCKeyPressed = Input.GetKey(KeyCode.C);
+        isCKeyPressed = Input.GetKey(KeyCode.C);
         if (isCKeyPressed && !isCrouching)
         {
             isCrouching = true;
             onCrouchStateChange?.Invoke(isCrouching);
-            playerIKSystem.AdjustLookTargetForCrouch(isCrouching);
         }
         else if (!isCKeyPressed && isCrouching)
         {
             isCrouching = false;
             onCrouchStateChange?.Invoke(isCrouching);
-            playerIKSystem.AdjustLookTargetForCrouch(isCrouching);
         }
 
         // Smoothly change the collider size and center based on crouch state

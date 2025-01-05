@@ -17,6 +17,8 @@ public class PlayerCrouchState : PlayerBaseState
         Debug.Log("Enter the Crouch State");
         stateMechine.onCrouchStateChange += HandleCrouchStateChange;
         stateMechine.animator.SetBool("Crouch", stateMechine.isCrouching);
+        stateMechine.animator.SetBool("isRunning", stateMechine.isRunning);
+        stateMechine.animator.CrossFadeInFixedTime("Crouch", 0.1f);
     }
 
     private void HandleCrouchStateChange(bool crouching)
